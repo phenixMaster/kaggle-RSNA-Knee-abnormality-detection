@@ -51,7 +51,7 @@ def load_dicom_image(file_path: str) -> np.ndarray:
 
 def plot_dicom_grid(images, titles=None, cols=5):
     """
-    @definition : Affiche une grille d'images DICOM.
+    @definition : Génère une grille d'images DICOM et la sauvegarde dans un fichier.
     @args/params : images (list) - Liste d'images numpy. titles (list) - Liste de titres. cols (int) - Nombre de colonnes.
     @return : None
     """
@@ -64,7 +64,10 @@ def plot_dicom_grid(images, titles=None, cols=5):
             plt.title(titles[i], fontsize=8)
         plt.axis('off')
     plt.tight_layout()
-    plt.show()
+    plt.savefig("eda_sample_grid.png")
+    print("Grille sauvegardée dans 'eda_sample_grid.png'")
+    plt.close()
+
 
 def explore_dataset_labels(labels_file: str):
     """
