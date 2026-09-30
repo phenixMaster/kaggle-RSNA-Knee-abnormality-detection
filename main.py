@@ -8,6 +8,8 @@ from src.models.knee_model import get_model
 import torchvision.transforms as T
 from tqdm import tqdm
 import numpy as np
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from sklearn.metrics import roc_auc_score
 

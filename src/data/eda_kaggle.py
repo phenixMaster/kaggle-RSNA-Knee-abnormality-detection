@@ -5,6 +5,8 @@ Ce script est conçu pour être exécutable directement sur les Kaggle Notebooks
 
 import os
 import pydicom
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
