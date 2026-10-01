@@ -31,8 +31,9 @@ def train_one_epoch(model, loader, optimizer, criterion, device):
         optimizer.step()
         
         running_loss += loss.item() * images.size(0)
-        all_labels.append(labels.detach().cpu().numpy())
-        all_preds.append(torch.sigmoid(outputs).detach().cpu().numpy())
+        # Convert to float32 and store only necessary info to save RAM
+        all_labels.append(labels.detach().cpu().numpy().astype(np.float32))
+        all_preds.append(torch.sigmoid(outputs).detach().cpu().numpy().astype(np.float32))
         
         pbar.set_postfix(loss=loss.item())
         
@@ -136,6 +137,9 @@ def main():
         
         print(f"Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f} | Val Mean AUC: {mean_auc:.4f}")
         
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+        
         if mean_auc > best_val_auc:
             best_val_auc = mean_auc
             torch.save(model.state_dict(), "best_model.pth")
@@ -161,6 +165,7 @@ def main():
     
     plt.tight_layout()
     plt.savefig("training_curves.png")
+    plt.close('all')
     print("\nTraining curves saved as training_curves.png")
     
     print(f"\nTraining complete. Best Val AUC: {best_val_auc:.4f}")
