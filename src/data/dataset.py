@@ -68,7 +68,7 @@ class KneeDataset(Dataset):
                         pass
         
         # Conversion en Tensor PyTorch (Channel, Height, Width)
-        image = torch.from_numpy(img_array).unsqueeze(0) 
+        image = torch.from_numpy(img_array).float().unsqueeze(0) 
         
         # FORCE LE REDIMENSIONNEMENT ICI pour éviter le RuntimeError: stack expects each tensor to be equal size
         # On le fait AVANT le transform optionnel
