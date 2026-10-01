@@ -8,7 +8,7 @@ class KneeAbnormalityModel(nn.Module):
     Utilise un backbone pré-entraîné (EfficientNet-B0) adapté pour des images 
     en niveaux de gris (1 canal).
     """
-    def __init__(self, num_classes=13):
+    def __init__(self, num_classes=12):
         super(KneeAbnormalityModel, self).__init__()
         
         # Utilisation d'EfficientNet-B0 comme backbone
@@ -49,7 +49,7 @@ class KneeAbnormalityModel(nn.Module):
         """
         return self.backbone(x)
 
-def get_model(num_classes=13):
+def get_model(num_classes=12):
     """
     Fonction utilitaire pour instancier le modèle.
     """

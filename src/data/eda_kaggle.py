@@ -4,12 +4,12 @@ Ce script est conçu pour être exécutable directement sur les Kaggle Notebooks
 """
 
 import os
-import pydicom
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+from src.utils.image_utils import load_dicom_image
 
 def get_kaggle_dataset_path() -> str:
     """
@@ -26,28 +26,6 @@ def get_kaggle_dataset_path() -> str:
         return local_path
     else:
         return ""
-
-def load_dicom_image(file_path: str) -> np.ndarray:
-    """
-    @definition : Charge une image DICOM et renvoie son tableau de pixels.
-    @args/params : file_path (str) - Le chemin complet vers le fichier .dcm.
-    @return : Tableau numpy contenant les pixels de l'image (np.ndarray).
-    """
-    dicom = pydicom.dcmread(file_path)
-    image = dicom.pixel_array
-    
-    # Transformation des données (si nécessaire)
-    if 'RescaleIntercept' in dicom and 'RescaleSlope' in dicom:
-        intercept = dicom.RescaleIntercept
-        slope = dicom.RescaleSlope
-        image = image * slope + intercept
-        
-    # Normalisation par clipping des percentiles pour un meilleur contraste
-    p1, p99 = np.percentile(image, [1, 99])
-    image = np.clip(image, p1, p99)
-    image = (image - p1) / (p99 - p1 + 1e-8)
-        
-    return image
 
 def plot_dicom_grid(images, titles=None, cols=5):
     """
@@ -94,7 +72,9 @@ def explore_dataset_labels(labels_file: str):
     plt.ylabel("Nombre d'occurrences")
     plt.xticks(rotation=45)
     plt.tight_layout()
-    plt.show()
+    plt.savefig("eda_labels_distribution.png")
+    print("Distribution des labels sauvegardée dans 'eda_labels_distribution.png'")
+    plt.close()
 
     print("\nAperçu des données :")
     print(df.head())

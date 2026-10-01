@@ -1,11 +1,10 @@
 import os
-import pydicom
 import pandas as pd
 import numpy as np
 import torch
 from torch.utils.data import Dataset
 import torchvision.transforms as T
-from PIL import Image
+from src.utils.image_utils import load_dicom_image
 
 class KneeDataset(Dataset):
     """
@@ -62,23 +61,11 @@ class KneeDataset(Dataset):
         if os.path.exists(series_dir):
             files = [f for f in os.listdir(series_dir) if f.endswith('.dcm')]
             if files:
-                # Sélection aléatoire d'une coupe pour augmenter la diversité d'entraînement
-                dicom_path = os.path.join(series_dir, np.random.choice(files))
-                try:
-                    dicom = pydicom.dcmread(dicom_path)
-                    img_array = dicom.pixel_array.astype(np.float32)
-                    
-                    # Application des facteurs d'échelle DICOM pour obtenir les valeurs HU/physiques
-                    if 'RescaleIntercept' in dicom and 'RescaleSlope' in dicom:
-                        img_array = img_array * dicom.RescaleSlope + dicom.RescaleIntercept
-                    
-                    # Normalisation robuste : Clipping des percentiles 1% et 99%
-                    # Évite que des pixels extrêmement brillants/sombres n'écrasent le contraste
-                    p1, p99 = np.percentile(img_array, [1, 99])
-                    img_array = np.clip(img_array, p1, p99)
-                    img_array = (img_array - p1) / (p99 - p1 + 1e-8)
-                except Exception:
-                    pass
+                    # Sélection aléatoire d'une coupe pour augmenter la diversité d'entraînement
+                    dicom_path = os.path.join(series_dir, np.random.choice(files))
+                    img_array = load_dicom_image(dicom_path)
+                    if img_array is None:
+                        pass
         
         # Conversion en Tensor PyTorch (Channel, Height, Width)
         image = torch.from_numpy(img_array).unsqueeze(0) 
