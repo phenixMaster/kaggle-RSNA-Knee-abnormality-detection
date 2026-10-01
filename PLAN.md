@@ -20,12 +20,12 @@ kaggle-RSNA/
 ## Étapes de Développement (Workflow)
 
 ### 1. Configuration et Préparation (Semaine 1)
-- [ ] Mettre à jour le token `kaggle.json` pour autoriser le téléchargement.
-- [ ] Télécharger le dataset complet avec l'API Kaggle (`kaggle competitions download -c rsna-knee-abnormality-detection`).
-- [ ] Explorer les données (EDA) dans `notebooks/`. Visualiser quelques images DICOM et évaluer la distribution des classes.
+- [x] Mettre à jour le token `kaggle.json` pour autoriser le téléchargement.
+- [x] Télécharger le dataset complet avec l'API Kaggle (`kaggle competitions download -c rsna-knee-abnormality-detection`).
+- [x] Explorer les données (EDA) dans `notebooks/`. Visualiser quelques images DICOM et évaluer la distribution des classes.
 
 ### 2. Pipeline de Données (Semaine 2)
-- [ ] Écrire les scripts dans `src/data/` pour lire et prétraiter les images DICOM (normalisation, redimensionnement).
+- [x] Écrire les scripts dans `src/data/` pour lire et prétraiter les images DICOM (normalisation, redimensionnement).
 - [ ] Gérer les labels faibles/manquants (si applicable) potentiellement via des méthodes NLP sur les comptes-rendus.
 - [ ] Mettre en place la validation croisée (ex: GroupKFold sur l'ID du patient).
 

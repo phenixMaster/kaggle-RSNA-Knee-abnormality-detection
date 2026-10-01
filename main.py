@@ -60,7 +60,7 @@ def validate(model, loader, criterion, device):
 
 def main():
     # Configuration
-    base_path = "/kaggle/input/rsna-knee-abnormality-detection" if os.path.exists("/kaggle/input") else "./data/raw"
+    base_path = "/kaggle/input/competitions/rsna-knee-abnormality-detection" if os.path.exists("/kaggle/input") else "./data/raw"
     
     CONFIG = {
         "labels_csv": os.path.join(base_path, "train.csv"),
