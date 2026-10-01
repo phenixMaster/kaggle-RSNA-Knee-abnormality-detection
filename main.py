@@ -11,7 +11,7 @@ import numpy as np
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-from sklearn.metrics import roc_auc_score
+from src.utils.metrics import calculate_auc
 
 def train_one_epoch(model, loader, optimizer, criterion, device):
     model.train()
@@ -57,16 +57,6 @@ def validate(model, loader, criterion, device):
             all_preds.append(torch.sigmoid(outputs).cpu().numpy())
             
     return running_loss / len(loader.dataset), np.concatenate(all_labels), np.concatenate(all_preds)
-
-def calculate_auc(labels, preds):
-    aucs = []
-    for i in range(labels.shape[1]):
-        try:
-            auc = roc_auc_score(labels[:, i], preds[:, i])
-            aucs.append(auc)
-        except ValueError:
-            aucs.append(0.5) # Fallback if only one class present
-    return np.mean(aucs), aucs
 
 def main():
     # Configuration
