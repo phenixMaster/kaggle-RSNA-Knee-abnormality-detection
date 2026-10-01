@@ -77,7 +77,7 @@ def main():
         "images_dir": os.path.join(base_path, "train_series"),
         "batch_size": 16,
         "lr": 1e-4,
-        "epochs": 10,
+        "epochs": 8,
         "device": device,
         "val_split": 0.2
     }
