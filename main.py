@@ -62,6 +62,14 @@ def main():
     # Configuration
     base_path = "/kaggle/input/competitions/rsna-knee-abnormality-detection" if os.path.exists("/kaggle/input") else "./data/raw"
     
+    # Device selection: CUDA for Kaggle, MPS for Mac, otherwise CPU
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+    elif torch.backends.mps.is_available():
+        device = torch.device("mps")
+    else:
+        device = torch.device("cpu")
+
     CONFIG = {
         "labels_csv": os.path.join(base_path, "train.csv"),
         "series_csv": os.path.join(base_path, "train_series.csv"),
@@ -69,7 +77,7 @@ def main():
         "batch_size": 16,
         "lr": 1e-4,
         "epochs": 10,
-        "device": torch.device("cuda" if torch.cuda.is_available() else "cpu"),
+        "device": device,
         "val_split": 0.2
     }
     
@@ -93,8 +101,11 @@ def main():
     train_size = len(full_dataset) - val_size
     train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
     
-    train_loader = DataLoader(train_dataset, batch_size=CONFIG["batch_size"], shuffle=True, num_workers=4, pin_memory=True)
-    val_loader = DataLoader(val_dataset, batch_size=CONFIG["batch_size"], shuffle=False, num_workers=4, pin_memory=True)
+    # Use pin_memory=True only for CUDA devices
+    use_pin_memory = (CONFIG["device"].type == "cuda")
+    
+    train_loader = DataLoader(train_dataset, batch_size=CONFIG["batch_size"], shuffle=True, num_workers=4, pin_memory=use_pin_memory)
+    val_loader = DataLoader(val_dataset, batch_size=CONFIG["batch_size"], shuffle=False, num_workers=4, pin_memory=use_pin_memory)
     
     # Model, Loss, Optimizer
     model = get_model().to(CONFIG["device"])
