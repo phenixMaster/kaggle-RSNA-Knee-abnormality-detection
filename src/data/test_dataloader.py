@@ -33,16 +33,18 @@ def get_knee_dataloader(labels_csv, series_csv, images_dir, batch_size=32, shuff
 
 if __name__ == "__main__":
     # Test rapide du DataLoader
+    import os
+    base_path = "/kaggle/input/rsna-knee-abnormality-detection" if os.path.exists("/kaggle/input") else "./data/raw"
     try:
         loader = get_knee_dataloader(
-            labels_csv="./data/raw/train.csv",
-            series_csv="./data/raw/train_series.csv",
-            images_dir="./data/raw/train_series"
+            labels_csv=os.path.join(base_path, "train.csv"),
+            series_csv=os.path.join(base_path, "train_series.csv"),
+            images_dir=os.path.join(base_path, "train_series")
         )
         
         batch = next(iter(loader))
         print(f"Batch images shape: {batch['image'].shape}") # [batch_size, 1, 224, 224]
-        print(f"Batch labels shape: {batch['labels'].shape}") # [batch_size, 13]
+        print(f"Batch labels shape: {batch['labels'].shape}") # [batch_size, 12]
         print("DataLoader opérationnel !")
     except Exception as e:
         print(f"Erreur lors du test du DataLoader: {e}")
