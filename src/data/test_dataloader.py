@@ -34,7 +34,7 @@ def get_knee_dataloader(labels_csv, series_csv, images_dir, batch_size=32, shuff
 if __name__ == "__main__":
     # Test rapide du DataLoader
     import os
-    base_path = "/kaggle/input/rsna-knee-abnormality-detection" if os.path.exists("/kaggle/input") else "./data/raw"
+    base_path = "/kaggle/input/competitions/rsna-knee-abnormality-detection" if os.path.exists("/kaggle/input") else "./data/raw"
     try:
         loader = get_knee_dataloader(
             labels_csv=os.path.join(base_path, "train.csv"),
