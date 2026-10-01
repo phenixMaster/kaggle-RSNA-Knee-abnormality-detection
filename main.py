@@ -21,8 +21,8 @@ def train_one_epoch(model, loader, optimizer, criterion, device):
     
     pbar = tqdm(loader, desc="Training")
     for batch in pbar:
-        images = batch['image'].to(device)
-        labels = batch['labels'].to(device)
+        images = batch['image'].to(device).float()
+        labels = batch['labels'].to(device).float()
         
         optimizer.zero_grad()
         outputs = model(images)
@@ -46,8 +46,8 @@ def validate(model, loader, criterion, device):
     
     with torch.no_grad():
         for batch in loader:
-            images = batch['image'].to(device)
-            labels = batch['labels'].to(device)
+            images = batch['image'].to(device).float()
+            labels = batch['labels'].to(device).float()
             
             outputs = model(images)
             loss = criterion(outputs, labels)
