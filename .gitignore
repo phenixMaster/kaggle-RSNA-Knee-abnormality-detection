@@ -42,6 +42,7 @@ env/
 uv.lock # Remove this if you want to allow versions to float, but keep for reproducible builds
 
 # Kaggle / Local environment
+*.png
 .kaggle/
 .DS_Store
 .DS_Store?

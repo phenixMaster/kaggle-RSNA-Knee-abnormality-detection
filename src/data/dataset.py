@@ -33,6 +33,7 @@ class KneeDataset(Dataset):
         # Identification dynamique des colonnes de labels (exclut les métadonnées)
         actual_labels = [col for col in labels_df.columns if col not in ['StudyInstanceUID', 'Report']]
         self.label_columns = actual_labels
+        print(f"Dataset labels found: {self.label_columns}")
 
     def __len__(self):
         """Renvoie le nombre total de séries disponibles."""
@@ -40,12 +41,12 @@ class KneeDataset(Dataset):
 
     def __getitem__(self, idx: int):
         """
-        Charge une coupe aléatoire d'une série et ses labels associés.
+        Charge plusieurs coupes consécutives d'une série pour une approche 2.5D.
         
         Args:
             idx (int): Index de l'échantillon.
         Returns:
-            dict: {'image': Tensor (1, 224, 224), 'labels': Tensor (13,)}
+            dict: {'image': Tensor (3, 384, 384), 'labels': Tensor (12,)}
         """
         row = self.data_info.iloc[idx]
         study_id = row['StudyInstanceUID']
@@ -54,25 +55,31 @@ class KneeDataset(Dataset):
         # Chemin : root/StudyInstanceUID/SeriesInstanceUID/
         series_dir = os.path.join(self.images_dir, str(study_id), str(series_id))
         
-        # Initialisation avec une image noire en cas d'échec de lecture
-        # Note: la taille ici est une sécurité, le resize final garantit la dimension
-        img_array = np.zeros((224, 224), dtype=np.float32)
-        
+        images_list = []
         if os.path.exists(series_dir):
-            files = [f for f in os.listdir(series_dir) if f.endswith('.dcm')]
+            files = sorted([f for f in os.listdir(series_dir) if f.endswith('.dcm')])
             if files:
-                    # Sélection aléatoire d'une coupe pour augmenter la diversité d'entraînement
-                    dicom_path = os.path.join(series_dir, np.random.choice(files))
-                    img_array = load_dicom_image(dicom_path)
-                    if img_array is None:
-                        pass
+                # Sélection d'un index aléatoire et prise de 3 coupes consécutives
+                idx_start = np.random.randint(0, max(1, len(files) - 2))
+                for i in range(3):
+                    if idx_start + i < len(files):
+                        dicom_path = os.path.join(series_dir, files[idx_start + i])
+                        img = load_dicom_image(dicom_path)
+                        if img is not None:
+                            img = torch.from_numpy(img).float().unsqueeze(0)
+                            img = T.functional.resize(img, (384, 384), interpolation=T.InterpolationMode.BICUBIC)
+                            images_list.append(img)
+                        else:
+                            images_list.append(torch.zeros((1, 384, 384)))
+                    else:
+                        images_list.append(torch.zeros((1, 384, 384)))
         
-        # Conversion en Tensor PyTorch (Channel, Height, Width)
-        image = torch.from_numpy(img_array).float().unsqueeze(0) 
+        if not images_list:
+            # Fallback : 3 images noires
+            images_list = [torch.zeros((1, 384, 384)) for _ in range(3)]
         
-        # FORCE LE REDIMENSIONNEMENT ICI pour éviter le RuntimeError: stack expects each tensor to be equal size
-        # On le fait AVANT le transform optionnel
-        image = T.functional.resize(image, (224, 224))
+        # Stack des 3 coupes pour créer un tenseur (3, 384, 384)
+        image = torch.cat(images_list, dim=0)
         
         if self.transform:
             image = self.transform(image)

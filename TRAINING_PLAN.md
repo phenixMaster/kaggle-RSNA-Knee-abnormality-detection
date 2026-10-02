@@ -7,7 +7,7 @@ Implement a complete training pipeline to detect 13 knee abnormalities from DICO
 
 ### 1. Model Implementation (`src/models/knee_model.py`)
 - **Architecture**: Use a pre-trained backbone (e.g., EfficientNet or ResNet) adapted for single-channel (grayscale) input.
-- **Head**: Multi-label classification head with a linear layer outputting 13 values.
+- **Head**: Multi-label classification head with a linear layer outputting 12 values.
 - **Activation**: Sigmoid activation for each label to handle independent binary classifications.
 
 ### 2. Training Orchestration (`main.py`)
