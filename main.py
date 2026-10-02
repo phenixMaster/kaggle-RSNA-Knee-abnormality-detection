@@ -122,12 +122,12 @@ def main():
     model = get_model().to(CONFIG["device"])
 
     # Progressive Fine-tuning: Freeze backbone for the first few epochs
-    # We will handle the unfreezing logic inside the training loop
-    for param in model.backbone.parameters():
+    actual_model = model.module if isinstance(model, nn.DataParallel) else model
+    for param in actual_model.backbone.parameters():
         param.requires_grad = False
     
     # Unfreeze the custom classifier
-    for param in model.backbone.classifier.parameters():
+    for param in actual_model.backbone.classifier.parameters():
         param.requires_grad = True
 
     # Calculate pos_weights for Weighted BCE Loss
@@ -166,7 +166,8 @@ def main():
         # Progressive Fine-tuning: Unfreeze backbone after 2 epochs
         if epoch == 2:
             print("Unfreezing backbone for full fine-tuning...")
-            for param in model.backbone.parameters():
+            actual_model = model.module if isinstance(model, nn.DataParallel) else model
+            for param in actual_model.backbone.parameters():
                 param.requires_grad = True
         
         train_loss, train_labels, train_preds = train_one_epoch(model, train_loader, optimizer, criterion, CONFIG["device"])
