@@ -35,6 +35,11 @@ def main():
         print(f"Failed to load model: {e}")
         return
 
+    # On charge le CSV après avoir réussi à charger le modèle
+    if not os.path.exists(labels_csv):
+        print(f"Error: {labels_csv} not found.")
+        return
+        
     df = pd.read_csv(labels_csv)
     target_cols = [col for col in df.columns if col not in ["StudyInstanceUID", "Report"]]
     
