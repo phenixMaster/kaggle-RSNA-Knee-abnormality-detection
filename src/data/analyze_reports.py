@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import torch
 from pathlib import Path
-import keras_nlp
+from transformers import AutoTokenizer, AutoModelForCausalLM
 from tqdm import tqdm
 
 def main():
@@ -11,14 +11,22 @@ def main():
     labels_csv = os.path.join(base_path, "train.csv")
     output_csv = "train_text_labels.csv"
     
-    # Chemin du modèle Keras
-    model_path = "/kaggle/input/models/keras/gemma4/keras/gemma4_2b/2"
+    # Chemin stable vers Gemma 2 2B IT
+    model_path = "/kaggle/input/models/google/gemma-2/transformers/gemma-2-2b-it/2"
     
-    print(f"Loading Keras model from: {model_path}...")
+    print(f"Loading stable model from: {model_path}...")
     
     try:
-        # Chargement via KerasNLP
-        gemma_lm = keras_nlp.models.GemmaCausalLM.from_preset(model_path)
+        tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=True)
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+            
+        model = AutoModelForCausalLM.from_pretrained(
+            model_path, 
+            device_map="auto", 
+            dtype=torch.bfloat16,
+            local_files_only=True
+        )
     except Exception as e:
         print(f"Failed to load model: {e}")
         return
@@ -32,8 +40,8 @@ def main():
     
     labels_list_str = ", ".join(target_cols)
     results = []
-    
     batch_size = 4 
+    
     print(f"Analyzing reports in batches of {batch_size}...")
     
     for i in tqdm(range(0, len(df), batch_size)):
@@ -51,10 +59,18 @@ def main():
             )
             prompts.append(prompt)
         
-        # Génération via KerasNLP
-        responses = gemma_lm.generate(prompts, max_length=128)
+        inputs = tokenizer(prompts, return_tensors="pt", padding=True).to(model.device)
         
-        for idx, response in enumerate(responses):
+        with torch.no_grad():
+            outputs = model.generate(
+                **inputs, 
+                max_new_tokens=64, 
+                do_sample=False
+            )
+        
+        decoded_outputs = tokenizer.batch_decode(outputs, skip_special_tokens=True)
+        
+        for idx, response in enumerate(decoded_outputs):
             study_id = batch_df.iloc[idx]['StudyInstanceUID']
             study_scores = {"StudyInstanceUID": study_id}
             
@@ -80,8 +96,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-if __name__ == "__main__":
-    main()
-
