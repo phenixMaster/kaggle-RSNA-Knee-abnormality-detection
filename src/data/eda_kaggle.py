@@ -72,7 +72,7 @@ def explore_dataset_labels(labels_file: str):
     plt.ylabel("Nombre d'occurrences")
     plt.xticks(rotation=45)
     plt.tight_layout()
-    plt.savefig("eda_labels_distribution.png")
+    plt.savefig("docs/eda_labels_distribution.png")
     print("Distribution des labels sauvegardée dans 'eda_labels_distribution.png'")
     plt.close()
 
