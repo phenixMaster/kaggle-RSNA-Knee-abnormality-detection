@@ -2,6 +2,7 @@ import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import pandas as pd
 from torch.utils.data import DataLoader, random_split
 from src.data.dataset import KneeDataset
 from src.models.knee_model import get_model
@@ -61,7 +62,8 @@ def validate(model, loader, criterion, device):
 
 def main():
     # Configuration
-    base_path = "/kaggle/input/competitions/rsna-knee-abnormality-detection" if os.path.exists("/kaggle/input") else "./data/raw"
+    is_kaggle = os.path.exists("/kaggle/input")
+    base_path = "/kaggle/input/competitions/rsna-knee-abnormality-detection" if is_kaggle else "./data/raw"
     
     # Device selection: CUDA for Kaggle, MPS for Mac, otherwise CPU
     if torch.cuda.is_available():
@@ -79,7 +81,8 @@ def main():
         "lr": 1e-4,
         "epochs": 8,
         "device": device,
-        "val_split": 0.2
+        "val_split": 0.2,
+        "local_subset": 0.1 if not is_kaggle else 1.0 # Use 10% of data locally to speed up dev
     }
     
     print(f"Using device: {CONFIG['device']}")
@@ -96,6 +99,13 @@ def main():
         images_dir=CONFIG["images_dir"],
         transform=transform
     )
+
+    # Use a subset of data for local development
+    if CONFIG["local_subset"] < 1.0:
+        print(f"Local dev mode: using {CONFIG['local_subset']*100:.0f}% of the dataset")
+        subset_size = int(len(full_dataset) * CONFIG["local_subset"])
+        indices = np.random.choice(len(full_dataset), subset_size, replace=False)
+        full_dataset = torch.utils.data.Subset(full_dataset, indices)
     
     # Split Train/Val
     val_size = int(len(full_dataset) * CONFIG["val_split"])
@@ -110,13 +120,31 @@ def main():
     
     # Model, Loss, Optimizer
     model = get_model().to(CONFIG["device"])
+
+    # Calculate pos_weights for Weighted BCE Loss
+    train_df = pd.read_csv(CONFIG["labels_csv"])
+    # Use the same logic as KneeDataset to identify target columns
+    target_cols = [col for col in train_df.columns if col not in ["StudyInstanceUID", "Report"]]
+    
+    pos_weights = []
+    print("\nCalculating class weights:")
+    for col in target_cols:
+        # Ensure the column is numeric to avoid TypeError with string labels
+        col_data = pd.to_numeric(train_df[col], errors='coerce').fillna(0)
+        pos = col_data.sum()
+        neg = len(train_df) - pos
+        weight = neg / pos if pos > 0 else 1.0
+        pos_weights.append(weight)
+        print(f"{col}: pos={int(pos)}, neg={int(neg)}, weight={weight:.4f}")
+    
+    weights_tensor = torch.tensor(pos_weights, dtype=torch.float).to(CONFIG["device"])
     
     # Utilisation de DataParallel si plusieurs GPUs sont disponibles
     if torch.cuda.device_count() > 1:
         print(f"Using {torch.cuda.device_count()} GPUs with DataParallel")
         model = nn.DataParallel(model)
         
-    criterion = nn.BCEWithLogitsLoss()
+    criterion = nn.BCEWithLogitsLoss(pos_weight=weights_tensor)
     optimizer = optim.AdamW(model.parameters(), lr=CONFIG["lr"])
 
     
