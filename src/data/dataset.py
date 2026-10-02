@@ -12,7 +12,7 @@ class KneeDataset(Dataset):
     Ce dataset mappe chaque série d'images à ses labels d'étude correspondants.
     """
     
-    def __init__(self, labels_csv: str, series_csv: str, images_dir: str, transform=None):
+    def __init__(self, labels_csv: str, series_csv: str, images_dir: str, text_labels_csv: str = None, transform=None):
         """
         Initialise le dataset en fusionnant les fichiers de labels et de séries.
         
@@ -20,6 +20,7 @@ class KneeDataset(Dataset):
             labels_csv (str): Chemin vers train.csv (StudyInstanceUID, labels).
             series_csv (str): Chemin vers train_series.csv (StudyInstanceUID, SeriesInstanceUID).
             images_dir (str): Racine du répertoire contenant les dossiers d'images DICOM.
+            text_labels_csv (str, optional): Chemin vers train_text_labels.csv (scores de Gemma).
             transform (callable, optional): Transformations PyTorch à appliquer.
         """
         labels_df = pd.read_csv(labels_csv)
@@ -27,6 +28,13 @@ class KneeDataset(Dataset):
         
         # Jointure : chaque ligne représente maintenant une série unique liée à ses labels d'étude
         self.data_info = pd.merge(series_df, labels_df, on='StudyInstanceUID')
+        
+        # Fusion avec les labels textuels si fournis
+        if text_labels_csv and os.path.exists(text_labels_csv):
+            text_df = pd.read_csv(text_labels_csv)
+            self.data_info = pd.merge(self.data_info, text_df, on='StudyInstanceUID', suffixes=('', '_text'))
+            print(f"Successfully merged text labels from {text_labels_csv}")
+        
         self.images_dir = images_dir
         self.transform = transform
         
@@ -84,8 +92,23 @@ class KneeDataset(Dataset):
         if self.transform:
             image = self.transform(image)
             
-        # Préparation des labels : conversion float et gestion des NaN
-        labels = row[self.label_columns].values.astype(np.float32)
+        # Préparation des labels : fusion binaire + textuelle (Soft Labels)
+        binary_labels = row[self.label_columns].values.astype(np.float32)
+        
+        # On cherche les colonnes correspondantes dans le DataFrame fusionné
+        # Si on a fusionné avec text_labels, les colonnes s'appellent 'Label' et 'Label_text'
+        text_labels = []
+        for col in self.label_columns:
+            text_col = f"{col}_text"
+            if text_col in row:
+                text_labels.append(row[text_col])
+            else:
+                text_labels.append(binary_labels[self.label_columns.index(col)])
+        
+        text_labels = np.array(text_labels).astype(np.float32)
+        
+        # Target = (Binaire + Texte) / 2
+        labels = (binary_labels + text_labels) / 2.0
         labels = np.nan_to_num(labels, nan=0.0)
         labels = torch.tensor(labels, dtype=torch.float32)
         

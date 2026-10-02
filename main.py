@@ -77,6 +77,7 @@ def main():
         "labels_csv": os.path.join(base_path, "train.csv"),
         "series_csv": os.path.join(base_path, "train_series.csv"),
         "images_dir": os.path.join(base_path, "train_series"),
+        "text_labels_csv": os.path.join(base_path, "../processed/train_text_labels.csv"),
         "batch_size": 16,
         "lr": 1e-4,
         "epochs": 8,
@@ -97,6 +98,7 @@ def main():
         labels_csv=CONFIG["labels_csv"],
         series_csv=CONFIG["series_csv"],
         images_dir=CONFIG["images_dir"],
+        text_labels_csv=CONFIG["text_labels_csv"],
         transform=transform
     )
 
