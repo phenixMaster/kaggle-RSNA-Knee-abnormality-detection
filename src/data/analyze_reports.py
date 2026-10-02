@@ -25,6 +25,10 @@ def main():
     
     try:
         tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=True)
+        # Set padding token to eos_token if not defined
+        if tokenizer.pad_token is None:
+            tokenizer.pad_token = tokenizer.eos_token
+            
         model = AutoModelForCausalLM.from_pretrained(
             model_path, 
             device_map="auto", 
@@ -35,7 +39,6 @@ def main():
         print(f"Failed to load model: {e}")
         return
 
-    # On charge le CSV après avoir réussi à charger le modèle
     if not os.path.exists(labels_csv):
         print(f"Error: {labels_csv} not found.")
         return
@@ -43,45 +46,66 @@ def main():
     df = pd.read_csv(labels_csv)
     target_cols = [col for col in df.columns if col not in ["StudyInstanceUID", "Report"]]
     
+    # Prepare the list of target labels for the prompt
+    labels_list_str = ", ".join(target_cols)
+    
     results = []
-
-    print("Analyzing reports...")
-    # Note: use a small sample first if you want to test
-    # df = df.head(10) 
-
-    for idx, row in tqdm(df.iterrows(), total=len(df)):
-        study_id = row['StudyInstanceUID']
-        report = row['Report']
+    batch_size = 4 # Adjust based on VRAM
+    
+    print(f"Analyzing reports in batches of {batch_size}...")
+    
+    for i in tqdm(range(0, len(df), batch_size)):
+        batch_df = df.iloc[i : i + batch_size]
         
-        study_scores = {"StudyInstanceUID": study_id}
-        
-        for col in target_cols:
+        prompts = []
+        for _, row in batch_df.iterrows():
             prompt = (
                 f"You are an expert musculoskeletal radiologist. Analyze the following MRI report "
-                f"and provide a probability score between 0.0 and 1.0 for the presence of {col}. "
-                f"Return ONLY the numerical value.\n\n"
-                f"Report: {report}\n\n"
-                f"Probability:"
+                f"and provide a probability score (0.0 to 1.0) for each of these abnormalities: {labels_list_str}. "
+                f"Format your response as a comma-separated list of numbers only, in the same order as the labels. "
+                f"If not mentioned, use 0.0.\n\n"
+                f"Report: {row['Report']}\n\n"
+                f"Scores:"
             )
+            prompts.append(prompt)
+        
+        inputs = tokenizer(prompts, return_tensors="pt", padding=True).to(model.device)
+        
+        with torch.no_grad():
+            outputs = model.generate(
+                **inputs, 
+                max_new_tokens=64, 
+                do_sample=False
+            )
+        
+        # Decode and parse
+        decoded_outputs = tokenizer.batch_decode(outputs, skip_special_tokens=True)
+        
+        for idx, response in enumerate(decoded_outputs):
+            study_id = batch_df.iloc[idx]['StudyInstanceUID']
+            study_scores = {"StudyInstanceUID": study_id}
             
-            inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
-            outputs = model.generate(**inputs, max_new_tokens=10)
-            response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+            # Extract only the generated part after "Scores:"
+            res_text = response.split("Scores:")[-1].strip()
+            scores = [s.strip() for s in res_text.split(",")]
             
-            try:
-                score_text = response.split("Probability:")[-1].strip().split()[0]
-                score = float(score_text)
-                score = max(0.0, min(1.0, score))
-            except:
-                score = 0.5
-            
-            study_scores[col] = score
-            
-        results.append(study_scores)
+            for j, col in enumerate(target_cols):
+                try:
+                    if j < len(scores):
+                        val = float(scores[j].split()[0]) # Handle "0.5" or "0.5 (certain)"
+                        score = max(0.0, min(1.0, val))
+                    else:
+                        score = 0.0
+                except:
+                    score = 0.0
+                study_scores[col] = score
+                
+            results.append(study_scores)
 
     results_df = pd.DataFrame(results)
     results_df.to_csv(output_csv, index=False)
     print(f"Analysis complete. Results saved to {output_csv}")
+
 
 if __name__ == "__main__":
     main()
