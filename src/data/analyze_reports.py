@@ -11,14 +11,25 @@ def main():
     output_csv = "train_text_labels.csv"
     
     # Chemin local vers le modèle sur Kaggle
-    model_id = "/kaggle/input/models/google/gemma-4/transformers/gemma-4-12b-it/1"
+    model_path = "/kaggle/input/models/google/gemma-4/transformers/gemma-4-12b-it/1"
     
-    print(f"Loading model from {model_id}...")
-    tokenizer = AutoTokenizer.from_pretrained(model_id)
+    # Vérification critique du chemin
+    if not os.path.exists(os.path.join(model_path, "config.json")):
+        print(f"Error: config.json not found in {model_path}")
+        print("Available files in directory:")
+        if os.path.exists(model_path):
+            print(os.listdir(model_path))
+        else:
+            print("Directory does not exist.")
+        return
+
+    print(f"Loading model from local path: {model_path}...")
+    tokenizer = AutoTokenizer.from_pretrained(model_path, local_files_only=True)
     model = AutoModelForCausalLM.from_pretrained(
-        model_id, 
+        model_path, 
         device_map="auto", 
-        torch_dtype=torch.bfloat16
+        torch_dtype=torch.bfloat16,
+        local_files_only=True
     )
 
     df = pd.read_csv(labels_csv)
