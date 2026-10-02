@@ -10,10 +10,10 @@ def main():
     labels_csv = os.path.join(base_path, "train.csv")
     output_csv = "train_text_labels.csv"
     
-    # Modèle Gemma 4 (Version légère pour tenir en VRAM avec le reste)
-    model_id = "google/gemma-4-2b" 
+    # Chemin local vers le modèle sur Kaggle
+    model_id = "/kaggle/input/models/google/gemma-4/transformers/gemma-4-12b-it/1"
     
-    print(f"Loading model {model_id}...")
+    print(f"Loading model from {model_id}...")
     tokenizer = AutoTokenizer.from_pretrained(model_id)
     model = AutoModelForCausalLM.from_pretrained(
         model_id, 
