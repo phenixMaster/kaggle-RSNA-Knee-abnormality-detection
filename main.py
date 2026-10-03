@@ -25,6 +25,17 @@ def train_one_epoch(model, loader, optimizer, criterion, device):
         images = batch['image'].to(device).float()
         labels = batch['labels'].to(device).float()
         
+        if 'debug_done' not in locals():
+            # DEBUG: Vérifier les prédictions au tout premier batch de l'entraînement
+            with torch.no_grad():
+                debug_preds = torch.sigmoid(model(images))
+                print(f"\n--- DEBUG TRAIN BATCH 0 ---")
+                print(f"Preds mean: {debug_preds.mean().item():.4f} | std: {debug_preds.std().item():.4f}")
+                print(f"Labels mean: {labels.mean().item():.4f}")
+                print(f"Max pred: {debug_preds.max().item():.4f} | Min pred: {debug_preds.min().item():.4f}")
+                print(f"---------------------------\n")
+            debug_done = True
+            
         optimizer.zero_grad()
         outputs = model(images)
         loss = criterion(outputs, labels)
