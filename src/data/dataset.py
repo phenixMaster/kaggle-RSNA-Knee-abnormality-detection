@@ -78,6 +78,8 @@ class KneeDataset(Dataset):
                             dicom_path = os.path.join(series_dir, files[start + i])
                             img = load_dicom_image(dicom_path)
                             if img is not None:
+                                # Normalisation Min-Max pour ramener les pixels entre 0 et 1
+                                img = (img - img.min()) / (img.max() - img.min() + 1e-8)
                                 img = torch.from_numpy(img).float().unsqueeze(0)
                                 img = T.functional.resize(img, (384, 384), interpolation=T.InterpolationMode.BICUBIC)
                                 images_list.append(img)

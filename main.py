@@ -47,12 +47,22 @@ def validate(model, loader, criterion, device):
     all_preds = []
     
     with torch.no_grad():
-        for batch in loader:
+        for i, batch in enumerate(loader):
             images = batch['image'].to(device).float()
             labels = batch['labels'].to(device).float()
             
             outputs = model(images)
             loss = criterion(outputs, labels)
+            
+            # DEBUG: Afficher les stats du premier batch
+            if i == 0:
+                preds = torch.sigmoid(outputs)
+                print(f"\n--- DEBUG BATCH 0 ---")
+                print(f"Preds mean: {preds.mean().item():.4f} | std: {preds.std().item():.4f}")
+                print(f"Labels mean: {labels.mean().item():.4f}")
+                print(f"Max pred: {preds.max().item():.4f} | Min pred: {preds.min().item():.4f}")
+                print(f"---------------------\n")
+                break
             
             running_loss += loss.item() * images.size(0)
             all_labels.append(labels.cpu().numpy())
