@@ -196,10 +196,10 @@ def main():
     for epoch in range(CONFIG["epochs"]):
         print(f"\nEpoch {epoch+1}/{CONFIG['epochs']}")
         
-    # Progressive Fine-tuning: Unfreeze backbone after 2 epochs
-    if epoch == 2:
-        print("Unfreezing backbone for full fine-tuning...")
-        # Ce bloc n'est plus nécessaire pour le modèle 3D car tout est déjà dégelé
+        # Progressive Fine-tuning: Unfreeze backbone after 2 epochs
+        if epoch == 2:
+            print("Unfreezing backbone for full fine-tuning...")
+            # Ce bloc n'est plus nécessaire pour le modèle 3D car tout est déjà dégelé
         
         train_loss, train_labels, train_preds = train_one_epoch(model, train_loader, optimizer, criterion, CONFIG["device"])
         val_loss, val_labels, val_preds = validate(model, val_loader, criterion, CONFIG["device"])
