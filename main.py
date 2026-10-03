@@ -160,6 +160,23 @@ def main():
     ensemble_models = []
     seeds = [42, 123, 999]
     
+    # Calculate pos_weights for Weighted BCE Loss (Defined once for all models)
+    train_df = pd.read_csv(CONFIG["labels_csv"])
+    target_cols = [col for col in train_df.columns if col not in ["StudyInstanceUID", "Report"]]
+    
+    pos_weights = []
+    print("\nCalculating class weights:")
+    for col in target_cols:
+        col_data = pd.to_numeric(train_df[col], errors='coerce').fillna(0)
+        pos = col_data.sum()
+        neg = len(train_df) - pos
+        weight = min(neg / pos if pos > 0 else 1.0, 100.0)
+        pos_weights.append(weight)
+        print(f"{col}: pos={int(pos)}, neg={int(neg)}, weight={weight:.4f}")
+    
+    weights_tensor = torch.tensor(pos_weights, dtype=torch.float).to(CONFIG["device"])
+    criterion = nn.BCEWithLogitsLoss(pos_weight=weights_tensor)
+    
     for seed in seeds:
         print(f"Training model with seed {seed}...")
         torch.manual_seed(seed)
