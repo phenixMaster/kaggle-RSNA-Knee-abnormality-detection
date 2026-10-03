@@ -137,6 +137,9 @@ def main():
     train_size = len(full_dataset) - val_size
     train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
     
+    print(f"Train set size: {len(train_dataset)}")
+    print(f"Val set size: {len(val_dataset)}")
+    
     # Use pin_memory=True only for CUDA devices
     use_pin_memory = (CONFIG["device"].type == "cuda")
     
