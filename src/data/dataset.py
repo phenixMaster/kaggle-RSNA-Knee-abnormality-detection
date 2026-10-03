@@ -112,8 +112,8 @@ class KneeDataset(Dataset):
         
         text_labels = np.array(text_labels).astype(np.float32)
         
-        # Target = (Binaire + Texte) / 2
-        labels = (binary_labels + text_labels) / 2.0
+        # Target = Labels binaires officiels (plus stable pour le debug)
+        labels = binary_labels
         labels = np.nan_to_num(labels, nan=0.0)
         labels = torch.tensor(labels, dtype=torch.float32)
         

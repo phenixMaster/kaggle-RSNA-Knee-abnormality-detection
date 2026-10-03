@@ -143,7 +143,8 @@ def main():
         col_data = pd.to_numeric(train_df[col], errors='coerce').fillna(0)
         pos = col_data.sum()
         neg = len(train_df) - pos
-        weight = neg / pos if pos > 0 else 1.0
+        # Clamp weight to avoid gradients explosions (max 100x)
+        weight = min(neg / pos if pos > 0 else 1.0, 100.0)
         pos_weights.append(weight)
         print(f"{col}: pos={int(pos)}, neg={int(neg)}, weight={weight:.4f}")
     
