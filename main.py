@@ -106,7 +106,7 @@ def main():
         "series_csv": os.path.join(base_path, "train_series.csv"),
         "images_dir": images_dir,
         "text_labels_csv": os.path.join(base_path, "../processed/train_text_labels.csv"),
-        "batch_size": 16,
+        "batch_size": 4,
         "lr": 5e-4,
         "epochs": 15,
         "device": device,
