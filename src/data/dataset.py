@@ -49,12 +49,12 @@ class KneeDataset(Dataset):
 
     def __getitem__(self, idx: int):
         """
-        Charge un volume de coupes d'une série pour une approche 3D.
+        Charge plusieurs vues de 3 coupes pour une approche 2.5D Avancée.
         
         Args:
             idx (int): Index de l'échantillon.
         Returns:
-            dict: {'image': Tensor (1, depth, 384, 384), 'labels': Tensor (12,)}
+            dict: {'image': Tensor (num_views * 3, 384, 384), 'labels': Tensor (12,)}
         """
         row = self.data_info.iloc[idx]
         study_id = row['StudyInstanceUID']
@@ -62,43 +62,37 @@ class KneeDataset(Dataset):
         
         series_dir = os.path.join(self.images_dir, str(study_id), str(series_id))
         
-        depth_target = 32 # Nombre de coupes cible pour le volume 3D
+        num_views = 4 # On prend 4 blocs de 3 coupes répartis sur le volume
         images_list = []
         
         if os.path.exists(series_dir):
             files = sorted([f for f in os.listdir(series_dir) if f.endswith('.dcm')])
             if files:
-                # Échantillonnage pour atteindre depth_target
                 num_files = len(files)
-                if num_files >= depth_target:
-                    # Échantillonnage uniforme si trop de coupes
-                    indices = np.linspace(0, num_files - 1, depth_target, dtype=int)
-                else:
-                    # Remplissage avec padding ou répétition si pas assez de coupes
-                    indices = np.concatenate([
-                        np.arange(num_files), 
-                        np.full(depth_target - num_files, num_files - 1)
-                    ])
+                # On échantillonne 4 points de départ répartis uniformément
+                view_starts = np.linspace(0, max(0, num_files - 3), num_views, dtype=int)
                 
-                for i in indices:
-                    dicom_path = os.path.join(series_dir, files[i])
-                    img = load_dicom_image(dicom_path)
-                    if img is not None:
-                        img = torch.from_numpy(img).float().unsqueeze(0)
-                        img = T.functional.resize(img, (384, 384), interpolation=T.InterpolationMode.BICUBIC)
-                        images_list.append(img)
-                    else:
-                        images_list.append(torch.zeros((1, 384, 384)))
+                for start in view_starts:
+                    for i in range(3):
+                        if start + i < num_files:
+                            dicom_path = os.path.join(series_dir, files[start + i])
+                            img = load_dicom_image(dicom_path)
+                            if img is not None:
+                                img = torch.from_numpy(img).float().unsqueeze(0)
+                                img = T.functional.resize(img, (384, 384), interpolation=T.InterpolationMode.BICUBIC)
+                                images_list.append(img)
+                            else:
+                                images_list.append(torch.zeros((1, 384, 384)))
+                        else:
+                            images_list.append(torch.zeros((1, 384, 384)))
         
-        if not images_list:
-            images_list = [torch.zeros((1, 384, 384)) for _ in range(depth_target)]
-        elif len(images_list) < depth_target:
-            # Fallback security padding
-            images_list.extend([torch.zeros((1, 384, 384)) for _ in range(depth_target - len(images_list))])
-        
-        # Stack des coupes pour créer un volume (depth, 1, 384, 384) -> (1, depth, 384, 384)
-        image = torch.stack(images_list, dim=0).squeeze(1) # (depth, 384, 384)
-        image = image.unsqueeze(0) # (1, depth, 384, 384)
+        # Padding si on n'a pas assez d'images
+        target_channels = num_views * 3
+        while len(images_list) < target_channels:
+            images_list.append(torch.zeros((1, 384, 384)))
+            
+        # Concatenation along channel dimension (num_views * 3, 384, 384)
+        image = torch.cat(images_list, dim=0)
         
         if self.transform:
             image = self.transform(image)
