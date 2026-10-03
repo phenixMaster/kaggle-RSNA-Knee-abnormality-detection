@@ -156,69 +156,39 @@ def main():
     print("DataLoaders created.")
     
     # Model, Loss, Optimizer
-    model = get_model(model_type='3D').to(CONFIG["device"])
+    # On entraîne un ensemble de 3 modèles pour moyenner les prédictions (Seed Averaging)
+    ensemble_models = []
+    seeds = [42, 123, 999]
     
-    # Pour le modèle 3D, on entraîne tout depuis le début car il n'y a pas de backbone pré-entraîné
-    # (On retire le bloc de freezing qui causait l'AttributeError)
+    for seed in seeds:
+        print(f"Training model with seed {seed}...")
+        torch.manual_seed(seed)
+        np.random.seed(seed)
+        
+        model = get_model(model_type='2.5D').to(CONFIG["device"])
+        
+        if torch.cuda.device_count() > 1:
+            model = nn.DataParallel(model)
+            
+        # Training loop for this specific model
+        optimizer = optim.AdamW(model.parameters(), lr=CONFIG["lr"])
+        
+        best_model_auc = 0.0
+        for epoch in range(CONFIG["epochs"]):
+            train_loss, train_labels, train_preds = train_one_epoch(model, train_loader, optimizer, criterion, CONFIG["device"])
+            val_loss, val_labels, val_preds = validate(model, val_loader, criterion, CONFIG["device"])
+            
+            mean_auc, _ = calculate_auc(val_labels, val_preds)
+            if mean_auc > best_model_auc:
+                best_model_auc = mean_auc
+                torch.save(model.state_dict(), f"best_model_seed_{seed}.pth")
+        
+        print(f"Model seed {seed} finished. Best Val AUC: {best_model_auc:.4f}")
+        ensemble_models.append(best_model_auc)
 
+    final_ensemble_auc = np.mean(ensemble_models)
+    print(f"\nFinal Ensemble Mean AUC: {final_ensemble_auc:.4f}")
 
-    # Calculate pos_weights for Weighted BCE Loss
-    train_df = pd.read_csv(CONFIG["labels_csv"])
-    # Use the same logic as KneeDataset to identify target columns
-    target_cols = [col for col in train_df.columns if col not in ["StudyInstanceUID", "Report"]]
-    
-    pos_weights = []
-    print("\nCalculating class weights:")
-    for col in target_cols:
-        # Ensure the column is numeric to avoid TypeError with string labels
-        col_data = pd.to_numeric(train_df[col], errors='coerce').fillna(0)
-        pos = col_data.sum()
-        neg = len(train_df) - pos
-        # Clamp weight to avoid gradients explosions (max 100x)
-        weight = min(neg / pos if pos > 0 else 1.0, 100.0)
-        pos_weights.append(weight)
-        print(f"{col}: pos={int(pos)}, neg={int(neg)}, weight={weight:.4f}")
-    
-    weights_tensor = torch.tensor(pos_weights, dtype=torch.float).to(CONFIG["device"])
-    
-    # Utilisation de DataParallel si plusieurs GPUs sont disponibles
-    if torch.cuda.device_count() > 1:
-        print(f"Using {torch.cuda.device_count()} GPUs with DataParallel")
-        model = nn.DataParallel(model)
-        
-    criterion = nn.BCEWithLogitsLoss(pos_weight=weights_tensor)
-    optimizer = optim.AdamW(model.parameters(), lr=CONFIG["lr"])
-
-    
-    best_val_auc = 0.0
-    history = {"train_loss": [], "val_loss": [], "val_auc": []}
-    
-    for epoch in range(CONFIG["epochs"]):
-        print(f"\nEpoch {epoch+1}/{CONFIG['epochs']}")
-        
-        # Progressive Fine-tuning: Unfreeze backbone after 2 epochs
-        if epoch == 2:
-            print("Unfreezing backbone for full fine-tuning...")
-            # Ce bloc n'est plus nécessaire pour le modèle 3D car tout est déjà dégelé
-        
-        train_loss, train_labels, train_preds = train_one_epoch(model, train_loader, optimizer, criterion, CONFIG["device"])
-        val_loss, val_labels, val_preds = validate(model, val_loader, criterion, CONFIG["device"])
-        
-        mean_auc, class_aucs = calculate_auc(val_labels, val_preds)
-        
-        history["train_loss"].append(train_loss)
-        history["val_loss"].append(val_loss)
-        history["val_auc"].append(mean_auc)
-        
-        print(f"Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f} | Val Mean AUC: {mean_auc:.4f}")
-        
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-        
-        if mean_auc > best_val_auc:
-            best_val_auc = mean_auc
-            torch.save(model.state_dict(), "best_model.pth")
-            print("Best model saved!")
 
     # Plotting the results
     plt.figure(figsize=(12, 4))
