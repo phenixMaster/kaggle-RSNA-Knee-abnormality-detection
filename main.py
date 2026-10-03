@@ -84,9 +84,16 @@ def validate(model, loader, criterion, device):
 def main():
     # Configuration
     is_kaggle = os.path.exists("/kaggle/input")
-    base_path = "/kaggle/input/competitions/rsna-knee-abnormality-detection" if is_kaggle else "./data/raw"
+    if is_kaggle:
+        base_path = "/kaggle/input/competitions/rsna-knee-abnormality-detection"
+    else:
+        base_path = "./data/raw"
     
-    # Device selection: CUDA for Kaggle, MPS for Mac, otherwise CPU
+    # Force images_dir to the exact path provided by the user for Kaggle
+    if is_kaggle:
+        images_dir = os.path.join(base_path, "train_series")
+    else:
+        images_dir = os.path.join(base_path, "train_series")
     if torch.cuda.is_available():
         device = torch.device("cuda")
     elif torch.backends.mps.is_available():
@@ -97,7 +104,7 @@ def main():
     CONFIG = {
         "labels_csv": os.path.join(base_path, "train.csv"),
         "series_csv": os.path.join(base_path, "train_series.csv"),
-        "images_dir": os.path.join(base_path, "train_series"),
+        "images_dir": images_dir,
         "text_labels_csv": os.path.join(base_path, "../processed/train_text_labels.csv"),
         "batch_size": 8,
         "lr": 5e-4,
