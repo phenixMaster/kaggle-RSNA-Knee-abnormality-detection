@@ -88,6 +88,12 @@ def main():
     
     print(f"Using device: {CONFIG['device']}")
     
+    # Dataset & Transforms
+    transform = T.Compose([
+        T.RandomHorizontalFlip(),
+        T.Normalize(mean=[0.485], std=[0.229])
+    ])
+    
     print("Initializing Dataset...")
     full_dataset = KneeDataset(
         labels_csv=CONFIG["labels_csv"],
