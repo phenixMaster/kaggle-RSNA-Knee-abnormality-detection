@@ -49,45 +49,56 @@ class KneeDataset(Dataset):
 
     def __getitem__(self, idx: int):
         """
-        Charge plusieurs coupes consécutives d'une série pour une approche 2.5D.
+        Charge un volume de coupes d'une série pour une approche 3D.
         
         Args:
             idx (int): Index de l'échantillon.
         Returns:
-            dict: {'image': Tensor (3, 384, 384), 'labels': Tensor (12,)}
+            dict: {'image': Tensor (1, depth, 384, 384), 'labels': Tensor (12,)}
         """
         row = self.data_info.iloc[idx]
         study_id = row['StudyInstanceUID']
         series_id = row['SeriesInstanceUID']
         
-        # Chemin : root/StudyInstanceUID/SeriesInstanceUID/
         series_dir = os.path.join(self.images_dir, str(study_id), str(series_id))
         
+        depth_target = 32 # Nombre de coupes cible pour le volume 3D
         images_list = []
+        
         if os.path.exists(series_dir):
             files = sorted([f for f in os.listdir(series_dir) if f.endswith('.dcm')])
             if files:
-                # Sélection d'un index aléatoire et prise de 3 coupes consécutives
-                idx_start = np.random.randint(0, max(1, len(files) - 2))
-                for i in range(3):
-                    if idx_start + i < len(files):
-                        dicom_path = os.path.join(series_dir, files[idx_start + i])
-                        img = load_dicom_image(dicom_path)
-                        if img is not None:
-                            img = torch.from_numpy(img).float().unsqueeze(0)
-                            img = T.functional.resize(img, (384, 384), interpolation=T.InterpolationMode.BICUBIC)
-                            images_list.append(img)
-                        else:
-                            images_list.append(torch.zeros((1, 384, 384)))
+                # Échantillonnage pour atteindre depth_target
+                num_files = len(files)
+                if num_files >= depth_target:
+                    # Échantillonnage uniforme si trop de coupes
+                    indices = np.linspace(0, num_files - 1, depth_target, dtype=int)
+                else:
+                    # Remplissage avec padding ou répétition si pas assez de coupes
+                    indices = np.concatenate([
+                        np.arange(num_files), 
+                        np.full(depth_target - num_files, num_files - 1)
+                    ])
+                
+                for i in indices:
+                    dicom_path = os.path.join(series_dir, files[i])
+                    img = load_dicom_image(dicom_path)
+                    if img is not None:
+                        img = torch.from_numpy(img).float().unsqueeze(0)
+                        img = T.functional.resize(img, (384, 384), interpolation=T.InterpolationMode.BICUBIC)
+                        images_list.append(img)
                     else:
                         images_list.append(torch.zeros((1, 384, 384)))
         
         if not images_list:
-            # Fallback : 3 images noires
-            images_list = [torch.zeros((1, 384, 384)) for _ in range(3)]
+            images_list = [torch.zeros((1, 384, 384)) for _ in range(depth_target)]
+        elif len(images_list) < depth_target:
+            # Fallback security padding
+            images_list.extend([torch.zeros((1, 384, 384)) for _ in range(depth_target - len(images_list))])
         
-        # Stack des 3 coupes pour créer un tenseur (3, 384, 384)
-        image = torch.cat(images_list, dim=0)
+        # Stack des coupes pour créer un volume (depth, 1, 384, 384) -> (1, depth, 384, 384)
+        image = torch.stack(images_list, dim=0).squeeze(1) # (depth, 384, 384)
+        image = image.unsqueeze(0) # (1, depth, 384, 384)
         
         if self.transform:
             image = self.transform(image)
