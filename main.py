@@ -88,12 +88,7 @@ def main():
     
     print(f"Using device: {CONFIG['device']}")
     
-    # Dataset & Transforms
-    transform = T.Compose([
-        T.RandomHorizontalFlip(),
-        T.Normalize(mean=[0.485], std=[0.229])
-    ])
-    
+    print("Initializing Dataset...")
     full_dataset = KneeDataset(
         labels_csv=CONFIG["labels_csv"],
         series_csv=CONFIG["series_csv"],
@@ -101,6 +96,7 @@ def main():
         text_labels_csv=CONFIG["text_labels_csv"],
         transform=transform
     )
+    print(f"Dataset initialized. Total samples: {len(full_dataset)}")
 
     # Use a subset of data for local development
     if CONFIG["local_subset"] < 1.0:
@@ -117,8 +113,10 @@ def main():
     # Use pin_memory=True only for CUDA devices
     use_pin_memory = (CONFIG["device"].type == "cuda")
     
-    train_loader = DataLoader(train_dataset, batch_size=CONFIG["batch_size"], shuffle=True, num_workers=4, pin_memory=use_pin_memory)
-    val_loader = DataLoader(val_dataset, batch_size=CONFIG["batch_size"], shuffle=False, num_workers=4, pin_memory=use_pin_memory)
+    print("Creating DataLoaders...")
+    train_loader = DataLoader(train_dataset, batch_size=CONFIG["batch_size"], shuffle=True, num_workers=0, pin_memory=use_pin_memory)
+    val_loader = DataLoader(val_dataset, batch_size=CONFIG["batch_size"], shuffle=False, num_workers=0, pin_memory=use_pin_memory)
+    print("DataLoaders created.")
     
     # Model, Loss, Optimizer
     model = get_model(model_type='3D').to(CONFIG["device"])
