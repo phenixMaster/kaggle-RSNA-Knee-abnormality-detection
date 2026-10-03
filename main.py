@@ -121,7 +121,7 @@ def main():
     val_loader = DataLoader(val_dataset, batch_size=CONFIG["batch_size"], shuffle=False, num_workers=4, pin_memory=use_pin_memory)
     
     # Model, Loss, Optimizer
-    model = get_model().to(CONFIG["device"])
+    model = get_model(model_type='3D').to(CONFIG["device"])
 
     # Progressive Fine-tuning: Freeze backbone for the first few epochs
     actual_model = model.module if isinstance(model, nn.DataParallel) else model
