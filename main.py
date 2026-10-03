@@ -78,9 +78,9 @@ def main():
         "series_csv": os.path.join(base_path, "train_series.csv"),
         "images_dir": os.path.join(base_path, "train_series"),
         "text_labels_csv": os.path.join(base_path, "../processed/train_text_labels.csv"),
-        "batch_size": 16,
-        "lr": 1e-4,
-        "epochs": 8,
+        "batch_size": 8,
+        "lr": 5e-4,
+        "epochs": 15,
         "device": device,
         "val_split": 0.2,
         "local_subset": 0.1 if not is_kaggle else 1.0 # Use 10% of data locally to speed up dev

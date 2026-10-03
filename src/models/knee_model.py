@@ -52,6 +52,18 @@ class KneeAbnormalityModel3D(nn.Module):
             nn.Dropout(0.3),
             nn.Linear(256, num_classes)
         )
+        self._initialize_weights()
+
+    def _initialize_weights(self):
+        for m in self.modules():
+            if isinstance(m, nn.Conv3d):
+                nn.init.kaiming_normal_(m.weight, mode='fan_out', nonlinearity='relu')
+            elif isinstance(m, nn.BatchNorm3d):
+                nn.init.constant_(m.weight, 1)
+                nn.init.constant_(m.bias, 0)
+            elif isinstance(m, nn.Linear):
+                nn.init.xavier_uniform_(m.weight)
+                nn.init.constant_(m.bias, 0)
 
     def _make_layer(self, in_channels, out_channels, blocks, stride):
         layers = []
