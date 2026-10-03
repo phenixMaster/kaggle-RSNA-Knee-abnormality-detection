@@ -62,14 +62,14 @@ class KneeDataset(Dataset):
         
         series_dir = os.path.join(self.images_dir, str(study_id), str(series_id))
         
-        num_views = 4 # On prend 4 blocs de 3 coupes répartis sur le volume
+        num_views = 2 # Réduit de 4 à 2 pour accélérer l'entraînement
         images_list = []
         
         if os.path.exists(series_dir):
             files = sorted([f for f in os.listdir(series_dir) if f.endswith('.dcm')])
             if files:
                 num_files = len(files)
-                # On échantillonne 4 points de départ répartis uniformément
+                # On échantillonne 2 points de départ répartis uniformément
                 view_starts = np.linspace(0, max(0, num_files - 3), num_views, dtype=int)
                 
                 for start in view_starts:
@@ -81,17 +81,17 @@ class KneeDataset(Dataset):
                                 # Normalisation Min-Max pour ramener les pixels entre 0 et 1
                                 img = (img - img.min()) / (img.max() - img.min() + 1e-8)
                                 img = torch.from_numpy(img).float().unsqueeze(0)
-                                img = T.functional.resize(img, (384, 384), interpolation=T.InterpolationMode.BICUBIC)
+                                img = T.functional.resize(img, (224, 224), interpolation=T.InterpolationMode.BICUBIC)
                                 images_list.append(img)
                             else:
-                                images_list.append(torch.zeros((1, 384, 384)))
+                                images_list.append(torch.zeros((1, 224, 224)))
                         else:
-                            images_list.append(torch.zeros((1, 384, 384)))
+                            images_list.append(torch.zeros((1, 224, 224)))
         
         # Padding si on n'a pas assez d'images
         target_channels = num_views * 3
         while len(images_list) < target_channels:
-            images_list.append(torch.zeros((1, 384, 384)))
+            images_list.append(torch.zeros((1, 224, 224)))
             
         # Concatenation along channel dimension (num_views * 3, 384, 384)
         image = torch.cat(images_list, dim=0)
