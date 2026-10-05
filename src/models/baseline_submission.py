@@ -14,8 +14,16 @@ Usage sur Kaggle :
 """
 
 import os
+import sys
 import argparse
 import logging
+from pathlib import Path
+
+# Résolution dynamique de la racine du projet
+_SCRIPT_DIR = Path(__file__).resolve().parent
+_ROOT_DIR   = _SCRIPT_DIR.parent.parent
+if str(_ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(_ROOT_DIR))
 
 import numpy as np
 import pandas as pd
