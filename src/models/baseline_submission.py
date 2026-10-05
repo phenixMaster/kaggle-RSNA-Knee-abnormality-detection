@@ -27,8 +27,8 @@ import torchvision.transforms as T
 from torch.utils.data import DataLoader, Dataset, random_split
 from tqdm import tqdm
 
-from utils.generate_submission import load_study_ids, make_submission
-from utils.image_utils import load_dicom_image
+from src.utils.generate_submission import load_study_ids, make_submission
+from src.utils.image_utils import load_dicom_image
 
 # ---------------------------------------------------------------------------
 # Logging
