@@ -362,9 +362,10 @@ def predict_test(
 
     # Dataset de test : pas de labels
     class TestDataset(Dataset):
-        def __init__(self, series_df, images_dir):
+        def __init__(self, series_df, images_dir, transform=None):
             self.data = series_df
             self.images_dir = images_dir
+            self.transform = transform
 
         def __len__(self):
             return len(self.data)
@@ -376,12 +377,17 @@ def predict_test(
                 str(row["StudyInstanceUID"]),
                 str(row["SeriesInstanceUID"]),
             )
-            img = KneeDataset2D._load_central_slice(None, series_dir)
+            img = KneeDataset2D._load_central_slice(KneeDataset2D, series_dir)
+            if self.transform:
+                img = self.transform(img)
             return img, row["StudyInstanceUID"]
 
     # Normalisation identique à l'entraînement
+    transform = T.Compose([
+        T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    ])
     loader = DataLoader(
-        TestDataset(series_df, images_dir),
+        TestDataset(series_df, images_dir, transform=transform),
         batch_size=batch_size,
         shuffle=False,
         num_workers=0,
